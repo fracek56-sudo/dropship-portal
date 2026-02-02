@@ -1,0 +1,1108 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Panel admina</title>
+  <link rel="stylesheet" href="app.css">
+  <style>
+    .topbar { display:flex; align-items:center; justify-content:space-between; gap: 10px; margin-bottom: 12px; }
+    .topbar h1 { margin:0; font-size: 22px; }
+    .row { display:flex; align-items:center; gap: 10px; flex-wrap: wrap; }
+    .spacer { flex:1; }
+
+    .btn { border:1px solid #2c3150; background:#0f1118; color:#e6e6e6; padding:10px 12px; border-radius:10px; cursor:pointer; }
+    .btn:hover { background:#151a27; }
+    .btn.primary { background:#1b2a6d; border-color:#2f46c8; }
+    .btn.primary:hover { background:#23358a; }
+    .btn.small { padding: 7px 10px; border-radius: 9px; font-size: 13px; }
+    .btn.danger { border-color:#6b2a2a; }
+    .btn.danger:hover { background:#2a1212; }
+
+    .input, .select, textarea.input {
+      padding: 10px; border-radius: 10px; border:1px solid #2c3150;
+      background:#0f1118; color:#e6e6e6; outline:none;
+    }
+    .input { min-width: 240px; }
+    .muted { color:#9aa3b2; font-size: 13px; }
+    .card { background:#12141b; border:1px solid #24283a; border-radius:14px; padding: 14px; }
+    .card h2 { margin: 0 0 10px 0; font-size: 16px; }
+    .hr { height: 1px; background:#24283a; margin: 12px 0; }
+
+    .tabs { display:flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .tab { padding: 8px 12px; border-radius: 999px; border:1px solid #2c3150; cursor:pointer; background:#0f1118; color:#e6e6e6; }
+    .tab.active { background:#1b2a6d; border-color:#2f46c8; }
+    .panel { display:none; }
+    .panel.active { display:block; }
+
+    .tableWrap { overflow:auto; border:1px solid #24283a; border-radius: 12px; }
+    table { width:100%; border-collapse: collapse; }
+    th, td { padding: 10px; border-bottom: 1px solid #24283a; vertical-align: top; }
+    th { text-align:left; font-size: 12px; color:#b9c0ff; font-weight: 600; background:#0f1118; position: sticky; top:0; }
+    td { font-size: 14px; }
+    .click { cursor:pointer; }
+    .click:hover { background: rgba(185,192,255,0.06); }
+    .nowrap { white-space: nowrap; }
+    .right { text-align:right; }
+
+    .pill { display:inline-flex; gap:8px; align-items:center; padding: 6px 10px; border:1px solid #2c3150; border-radius: 999px; font-size: 12px; color:#b9c0ff; }
+
+    .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .grid3 { display:grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    @media (max-width: 980px){ .grid2{ grid-template-columns:1fr; } .grid3{ grid-template-columns:1fr; } }
+
+    .st { display:inline-flex; align-items:center; gap:8px; padding: 6px 10px; border-radius: 999px; border:1px solid #2c3150; font-size: 12px; }
+    .st.new { border-color:#2f46c8; color:#b9c0ff; }
+    .st.done { border-color:#2a6b3a; color:#b9ffc9; }
+    .st.problem { border-color:#6b2a2a; color:#ffb9b9; }
+
+    .modal { position:fixed; inset:0; background: rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; padding: 18px; z-index: 99; }
+    .modal.open { display:flex; }
+    .modalCard { max-width: 980px; width:100%; background:#12141b; border:1px solid #24283a; border-radius: 14px; padding: 16px; }
+    .modalHeader { display:flex; align-items:flex-start; justify-content:space-between; gap: 12px; }
+    .modalHeader h2 { margin:0; font-size: 18px; }
+    .items li { margin: 6px 0; }
+    .label { display:block; margin-top: 10px; margin-bottom: 6px; color:#b9c0ff; font-size: 13px; }
+
+    .badgeCol { display:flex; flex-direction:column; gap:8px; align-items:flex-end; }
+  </style>
+</head>
+
+<body class="wrap">
+  <div class="topbar">
+    <div>
+      <h1>Panel admina</h1>
+      <div class="muted" id="who"></div>
+    </div>
+    <div class="row">
+      <button class="btn" id="refreshBtn">Odśwież</button>
+      <button class="btn" id="logoutBtn">Wyloguj</button>
+    </div>
+  </div>
+
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-tab="orders">Zamówienia</button>
+    <button class="tab" data-tab="products">Produkty</button>
+    <button class="tab" data-tab="createSeller">Utwórz sprzedawcę</button>
+    <button class="tab" data-tab="sellers">Moi sprzedawcy</button>
+    <button class="tab" data-tab="salesSummary">Sprzedane produkty</button>
+    <button class="tab" data-tab="stats">Ranking</button>
+  </div>
+
+  <!-- ORDERS -->
+  <div class="panel active" id="panel-orders">
+    <div class="grid3">
+      <div class="card">
+        <div class="muted">Zamówienia (po filtrach)</div>
+        <div style="font-size:22px; font-weight:800;" id="statOrders">0</div>
+      </div>
+      <div class="card">
+        <div class="muted">Nowe</div>
+        <div style="font-size:22px; font-weight:800;" id="statNew">0</div>
+      </div>
+      <div class="card">
+        <div class="muted">Suma zakupów brutto</div>
+        <div style="font-size:22px; font-weight:800;" id="statTotal">0 zł</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px;">
+      <div class="row" style="justify-content:space-between;">
+        <div>
+          <h2 style="margin:0;">Historia zamówień</h2>
+          <div class="muted">Kliknij wiersz, żeby zobaczyć szczegóły, pobrać PDF lub usunąć zamówienie.</div>
+        </div>
+        <span class="pill" id="autoInfo">Auto-odświeżanie: co 7s</span>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="row">
+        <input class="input" id="qOrders" placeholder="Szukaj: numer, sprzedawca, produkt..." />
+        <select class="select" id="statusFilter">
+          <option value="all">Wszystkie statusy</option>
+          <option value="new">Nowe</option>
+          <option value="done">Zrealizowane</option>
+          <option value="problem">Problem</option>
+        </select>
+        <select class="select" id="dateFilter">
+          <option value="all">Wszystkie daty</option>
+          <option value="today">Dzisiaj</option>
+          <option value="7d">Ostatnie 7 dni</option>
+        </select>
+        <select class="select" id="sortOrders">
+          <option value="desc">Najnowsze</option>
+          <option value="asc">Najstarsze</option>
+        </select>
+        <span class="spacer"></span>
+        <span class="muted" id="ordersMsg"></span>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="nowrap">#</th>
+              <th>Sprzedawca</th>
+              <th>Status</th>
+              <th>Produkty</th>
+              <th class="right nowrap">Suma zakupów</th>
+              <th class="nowrap">PDF</th>
+            </tr>
+          </thead>
+          <tbody id="ordersBody">
+            <tr><td colspan="6" class="muted">Ładowanie...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRODUCTS -->
+  <div class="panel" id="panel-products">
+    <div class="grid2">
+      <div class="card">
+        <h2>Dodaj produkt</h2>
+        <div class="muted">Produkt pojawi się u sprzedawców. Usunięcie produktu wyłączy go (historia zamówień zostaje).</div>
+
+        <span class="label">Nazwa</span>
+        <input class="input" id="pname" placeholder="np. Tablet LED A4" style="width:100%;" />
+
+        <span class="label">Cena zakupu brutto (zł)</span>
+        <input class="input" id="pprice" type="number" step="0.01" placeholder="np. 49.99" style="width:100%;" />
+
+        <button class="btn primary" id="addProductBtn" style="width:100%; margin-top:12px;">Dodaj produkt</button>
+        <div class="muted" id="pmsg" style="margin-top:8px;"></div>
+      </div>
+
+      <div class="card">
+        <div class="row" style="justify-content:space-between;">
+          <h2 style="margin:0;">Lista produktów</h2>
+          <span class="pill" id="prodCount">0</span>
+        </div>
+        <div class="hr"></div>
+        <div class="tableWrap" style="max-height:520px;">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Nazwa</th>
+                <th class="right">Cena</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="productsBody">
+              <tr><td colspan="5" class="muted">Ładowanie...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="muted" style="margin-top:8px;">Usunięcie = wyłączenie (sprzedawcy nie zobaczą), historia zamówień zostaje.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CREATE SELLER -->
+  <div class="panel" id="panel-createSeller">
+    <div class="card" style="max-width:760px;">
+      <h2>Utwórz konto sprzedawcy</h2>
+      <div class="muted">Tworzysz login i hasło. Sprzedawca loguje się na seller.html.</div>
+
+      <span class="label">Email / login</span>
+      <input class="input" id="sEmail" placeholder="np. partner1@firma.pl" style="width:100%;" />
+
+      <span class="label">Hasło</span>
+      <input class="input" id="sPass" placeholder="np. mocnehaslo123" style="width:100%;" />
+
+      <span class="label">Nazwa wyświetlana (opcjonalnie)</span>
+      <input class="input" id="sName" placeholder="np. Partner 1" style="width:100%;" />
+
+      <button class="btn primary" id="createSellerBtn" style="width:100%; margin-top:12px;">Utwórz konto</button>
+      <div class="muted" id="smsg" style="margin-top:8px;"></div>
+    </div>
+  </div>
+
+  <!-- SELLERS -->
+  <div class="panel" id="panel-sellers">
+    <div class="grid2">
+      <div class="card">
+        <div class="row" style="justify-content:space-between;">
+          <h2 style="margin:0;">Moi sprzedawcy</h2>
+          <span class="pill" id="sellerCount">0</span>
+        </div>
+        <div class="hr"></div>
+
+        <div class="row">
+          <input class="input" id="qSellers" placeholder="Szukaj sprzedawcy..." style="flex:1; min-width:220px;">
+          <button class="btn" id="reloadSellersBtn">Odśwież listę</button>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="tableWrap" style="max-height:520px;">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Sprzedawca</th>
+                <th>Status</th>
+                <th>Ostrz.</th>
+              </tr>
+            </thead>
+            <tbody id="sellersBody">
+              <tr><td colspan="4" class="muted">Ładowanie...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="muted" id="sellersMsg" style="margin-top:8px;"></div>
+      </div>
+
+      <div class="card" id="sellerProfileCard">
+        <h2>Profil sprzedawcy</h2>
+        <div class="muted">Kliknij sprzedawcę z listy, żeby zobaczyć statystyki i zrobić eksport.</div>
+        <div class="hr"></div>
+
+        <div id="sellerProfileEmpty" class="muted">Nie wybrano sprzedawcy.</div>
+
+        <div id="sellerProfile" style="display:none;">
+          <div class="row" style="justify-content:space-between;">
+            <div>
+              <div style="font-size:18px; font-weight:800;" id="spTitle"></div>
+              <div class="muted" id="spSub"></div>
+            </div>
+            <div class="row">
+              <button class="btn small danger" id="banBtn">Zablokuj</button>
+              <button class="btn small" id="unbanBtn">Odblokuj</button>
+            </div>
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="grid3">
+            <div class="card">
+              <div class="muted">Zamówienia (łącznie)</div>
+              <div style="font-size:22px; font-weight:800;" id="spAllOrders">0</div>
+            </div>
+            <div class="card">
+              <div class="muted">Zamówienia (dzisiaj)</div>
+              <div style="font-size:22px; font-weight:800;" id="spTodayOrders">0</div>
+            </div>
+            <div class="card">
+              <div class="muted">Zakupów brutto (łącznie)</div>
+              <div style="font-size:22px; font-weight:800;" id="spAllTurnover">0 zł</div>
+            </div>
+          </div>
+
+          <div class="grid3" style="margin-top:10px;">
+            <div class="card">
+              <div class="muted">Zakupów brutto (dzisiaj)</div>
+              <div style="font-size:22px; font-weight:800;" id="spTodayTurnover">0 zł</div>
+            </div>
+            <div class="card">
+              <div class="muted">Status konta</div>
+              <div style="font-size:16px; font-weight:800;" id="spBanState">—</div>
+            </div>
+            <div class="card">
+              <div class="muted">Ostrzeżenie</div>
+              <div style="font-size:16px; font-weight:800;" id="spWarnState">—</div>
+            </div>
+          </div>
+
+          <div class="hr"></div>
+
+          <h2 style="margin:0 0 8px 0;">Zakres dat</h2>
+          <div class="row">
+            <div>
+              <div class="muted">Od</div>
+              <input class="input" type="date" id="rangeFrom">
+            </div>
+            <div>
+              <div class="muted">Do</div>
+              <input class="input" type="date" id="rangeTo">
+            </div>
+            <button class="btn" id="rangeApplyBtn">Pokaż</button>
+            <span class="spacer"></span>
+            <button class="btn" id="exportPdfBtn">Faktura zbiorcza (PDF)</button>
+          </div>
+
+          <div class="muted" id="rangeMsg" style="margin-top:8px;"></div>
+
+          <div class="hr"></div>
+
+          <div class="row" style="justify-content:space-between;">
+            <h2 style="margin:0;">Zamówienia w zakresie</h2>
+            <span class="pill" id="rangeCount">0</span>
+          </div>
+
+          <div class="tableWrap" style="max-height:340px; margin-top:10px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Data</th>
+                  <th>Status</th>
+                  <th>Produkty</th>
+                  <th class="right">Suma</th>
+                </tr>
+              </thead>
+              <tbody id="rangeOrdersBody">
+                <tr><td colspan="5" class="muted">Ustaw zakres dat.</td></tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="4" class="right"><b>RAZEM</b></td>
+                  <td class="right nowrap"><b id="rangeTotal">0.00 zł</b></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <div class="hr"></div>
+
+          <h2 style="margin:0 0 8px 0;">Ostrzeżenie (baner u sprzedawcy)</h2>
+          <div class="muted">Baner będzie widoczny u sprzedawcy dopóki nie kliknie ✕.</div>
+          <textarea class="input" id="warnText" style="width:100%; min-height:90px; margin-top:8px;" placeholder="np. Prosimy o poprawne PDFy."></textarea>
+          <div class="row" style="margin-top:10px;">
+            <button class="btn" id="setWarnBtn">Ustaw ostrzeżenie</button>
+            <button class="btn danger" id="clearWarnBtn">Usuń ostrzeżenie</button>
+            <span class="muted" id="warnMsg"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SALES SUMMARY -->
+  <div class="panel" id="panel-salesSummary">
+    <div class="card">
+      <div class="row" style="justify-content:space-between;">
+        <div>
+          <h2 style="margin:0;">Sprzedane produkty (wszyscy sprzedawcy)</h2>
+          <div class="muted">Wybierz zakres dat, a zobaczysz sumę sprzedanych sztuk per produkt.</div>
+        </div>
+        <span class="pill" id="ssCount">0</span>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="row">
+        <div>
+          <div class="muted">Od</div>
+          <input class="input" type="date" id="ssFrom">
+        </div>
+        <div>
+          <div class="muted">Do</div>
+          <input class="input" type="date" id="ssTo">
+        </div>
+        <button class="btn" id="ssApplyBtn">Pokaż</button>
+        <span class="spacer"></span>
+        <span class="muted" id="ssMsg"></span>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Produkt</th>
+              <th class="right">Sztuk</th>
+              <th class="right">Wartość brutto</th>
+            </tr>
+          </thead>
+          <tbody id="ssBody">
+            <tr><td colspan="3" class="muted">Ustaw zakres dat.</td></tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td class="right"><b>RAZEM</b></td>
+              <td class="right nowrap"><b id="ssQty">0</b></td>
+              <td class="right nowrap"><b id="ssVal">0.00 zł</b></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="panel" id="panel-stats">
+    <div class="grid2">
+      <div class="card">
+        <h2>Top 5 produktów</h2>
+        <div class="muted">Liczone z historii zamówień (po sumie wartości).</div>
+        <div class="hr"></div>
+        <div id="topProducts" class="muted">Ładowanie...</div>
+      </div>
+      <div class="card">
+        <h2>Top 5 sprzedawców</h2>
+        <div class="muted">Liczone z historii zamówień (po sumie wartości).</div>
+        <div class="hr"></div>
+        <div id="topSellers" class="muted">Ładowanie...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ORDER MODAL -->
+  <div class="modal" id="modal">
+    <div class="modalCard">
+      <div class="modalHeader">
+        <div>
+          <h2 id="mTitle">Zamówienie</h2>
+          <div class="muted" id="mMeta"></div>
+        </div>
+        <div class="row">
+          <button class="btn small danger" id="mDeleteBtn">Usuń zamówienie</button>
+          <button class="btn small" id="mPdfBtn" style="display:none;">Pobierz PDF</button>
+          <button class="btn small" id="mClose">Zamknij</button>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="grid2">
+        <div>
+          <div class="pill" id="mSum">Suma: 0 zł</div>
+          <ul class="items" id="mItems"></ul>
+        </div>
+        <div>
+          <div class="muted">Status / Problem</div>
+          <div class="hr"></div>
+
+          <div id="mStatus"></div>
+
+          <div id="problemBox" style="margin-top:10px;">
+            <div class="muted">Oznacz jako PROBLEM (wybierz powód):</div>
+            <select class="select" id="problemReason" style="width:100%; margin-top:8px;">
+              <option value="brak danych">brak danych</option>
+              <option value="zły PDF">zły PDF</option>
+              <option value="błąd produktu">błąd produktu</option>
+              <option value="inne">inne</option>
+            </select>
+            <textarea class="input" id="problemNote" style="width:100%; min-height:70px; margin-top:8px;" placeholder="Notatka (opcjonalnie)"></textarea>
+
+            <div class="row" style="margin-top:10px;">
+              <button class="btn danger" id="setProblemBtn">Ustaw PROBLEM</button>
+              <button class="btn" id="clearProblemBtn">Usuń PROBLEM</button>
+            </div>
+            <div class="muted" id="problemMsg" style="margin-top:8px;"></div>
+          </div>
+
+          <div class="hr"></div>
+          <div class="muted">Szybkie akcje</div>
+          <div class="row" style="margin-top:10px;">
+            <button class="btn small" id="copyOrderId">Kopiuj numer</button>
+            <button class="btn small" id="copySeller">Kopiuj sprzedawcę</button>
+          </div>
+          <div class="muted" id="mToast" style="margin-top:10px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    guard('admin');
+    const token = localStorage.getItem('token');
+    const email = localStorage.getItem('email') || '(admin)';
+    document.getElementById('who').textContent = `Zalogowany: ${email}`;
+
+    // state
+    let products = [];
+    let orders = [];
+    let sellers = [];
+    let selectedOrder = null;
+    let selectedSeller = null;
+
+    // helpers
+    function fmtPLN(n){ return `${Number(n || 0).toFixed(2)} zł`; }
+    function statusBadge(status){
+      if (status === 'done') return `<span class="st done">🟢 ZREALIZOWANE</span>`;
+      if (status === 'problem') return `<span class="st problem">🔴 PROBLEM</span>`;
+      return `<span class="st new">🔵 NOWE</span>`;
+    }
+    function parseCreatedAt(s){ return new Date(String(s).replace(' ','T')); }
+    function inDateRange(created_at, mode){
+      if (mode === 'all') return true;
+      const d = parseCreatedAt(created_at);
+      const now = new Date();
+      if (mode === 'today') return d.toDateString() === now.toDateString();
+      if (mode === '7d') return ((now - d) / (1000*60*60*24)) <= 7;
+      return true;
+    }
+
+    async function apiGet(url){
+      const r = await fetch(url, { headers: { 'x-auth-token': token } });
+      const data = await r.json().catch(()=> ({}));
+      if (!r.ok) throw new Error(data.error || 'Błąd');
+      return data;
+    }
+    async function apiPost(url, body){
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', 'x-auth-token': token },
+        body: JSON.stringify(body || {})
+      });
+      const data = await r.json().catch(()=> ({}));
+      if (!r.ok) throw new Error(data.error || 'Błąd');
+      return data;
+    }
+    async function apiPatch(url, body){
+      const r = await fetch(url, {
+        method: 'PATCH',
+        headers: { 'Content-Type':'application/json', 'x-auth-token': token },
+        body: JSON.stringify(body || {})
+      });
+      const data = await r.json().catch(()=> ({}));
+      if (!r.ok) throw new Error(data.error || 'Błąd');
+      return data;
+    }
+    async function apiDel(url){
+      const r = await fetch(url, { method:'DELETE', headers: { 'x-auth-token': token }});
+      const data = await r.json().catch(()=> ({}));
+      if (!r.ok) throw new Error(data.error || 'Błąd');
+      return data;
+    }
+    async function apiDelJson(url, body){
+      const r = await fetch(url, {
+        method: 'DELETE',
+        headers: { 'Content-Type':'application/json', 'x-auth-token': token },
+        body: JSON.stringify(body || {})
+      });
+      const data = await r.json().catch(()=> ({}));
+      if (!r.ok) throw new Error(data.error || 'Błąd');
+      return data;
+    }
+
+    async function downloadPdf(orderId){
+      const r = await fetch(`/api/orders/${orderId}/pdf`, { headers: { 'x-auth-token': token }});
+      if (!r.ok) {
+        const j = await r.json().catch(()=>({}));
+        alert(j.error || 'Nie udało się pobrać PDF');
+        return;
+      }
+      const blob = await r.blob();
+      const cd = r.headers.get('Content-Disposition') || '';
+      let filename = `order-${orderId}.pdf`;
+      const m = cd.match(/filename\*?=(?:UTF-8'')?("?)([^";]+)\1/i);
+      if (m && m[2]) { try { filename = decodeURIComponent(m[2]); } catch {} }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    // ORDERS
+    function applyOrderFilters(list){
+      const q = (document.getElementById('qOrders').value || '').trim().toLowerCase();
+      const st = document.getElementById('statusFilter').value;
+      const dt = document.getElementById('dateFilter').value;
+      const sort = document.getElementById('sortOrders').value;
+
+      let out = list.filter(o => {
+        if (st !== 'all' && o.status !== st) return false;
+        if (!inDateRange(o.created_at, dt)) return false;
+        if (!q) return true;
+        const hay = [String(o.id), o.seller_email || '', ...(o.items || []).map(i => i.name)].join(' ').toLowerCase();
+        return hay.includes(q);
+      });
+
+      out.sort((a,b) => sort === 'desc' ? b.id - a.id : a.id - b.id);
+      return out;
+    }
+
+    function renderOrders(){
+      const filtered = applyOrderFilters(orders);
+
+      document.getElementById('statOrders').textContent = String(filtered.length);
+      document.getElementById('statNew').textContent = String(filtered.filter(o => o.status === 'new').length);
+      document.getElementById('statTotal').textContent = fmtPLN(filtered.reduce((s,o) => s + Number(o.total_buy_gross||0), 0));
+
+      const body = document.getElementById('ordersBody');
+      if (!filtered.length){
+        body.innerHTML = `<tr><td colspan="6" class="muted">Brak wyników.</td></tr>`;
+        return;
+      }
+
+      body.innerHTML = filtered.map(o => {
+        const items = o.items || [];
+        const preview = items.slice(0,2).map(i => `${escapeHtml(i.name)} ×${i.qty}`).join(', ')
+          + (items.length > 2 ? ` +${items.length-2}` : '');
+        const pdfBtn = `<button class="btn small" data-dlp="${o.id}">Pobierz</button>`;
+        return `
+          <tr class="click" data-oid="${o.id}">
+            <td class="nowrap"><b>#${o.id}</b><div class="muted">${escapeHtml(o.created_at)}</div></td>
+            <td><b>${escapeHtml(o.seller_email||'')}</b></td>
+            <td class="nowrap">${statusBadge(o.status)}</td>
+            <td>${preview || '<span class="muted">—</span>'}</td>
+            <td class="right nowrap"><b>${fmtPLN(o.total_buy_gross)}</b></td>
+            <td class="nowrap">${pdfBtn}</td>
+          </tr>
+        `;
+      }).join('');
+
+      body.querySelectorAll('tr[data-oid]').forEach(tr => {
+        tr.onclick = () => {
+          const id = Number(tr.dataset.oid);
+          const o = orders.find(x => x.id === id);
+          if (o) openOrderModal(o);
+        };
+      });
+
+      body.querySelectorAll('button[data-dlp]').forEach(btn => {
+        btn.onclick = async (e) => {
+          e.stopPropagation();
+          const id = Number(btn.dataset.dlp);
+          await downloadPdf(id);
+          await loadOrders();
+        };
+      });
+    }
+
+    function openOrderModal(o){
+      selectedOrder = o;
+      document.getElementById('mTitle').textContent = `Zamówienie #${o.id}`;
+      document.getElementById('mMeta').textContent = `${o.created_at} • Sprzedawca: ${o.seller_email || ''}`;
+      document.getElementById('mSum').textContent = `Suma zakupów brutto: ${fmtPLN(o.total_buy_gross)}`;
+
+      document.getElementById('mItems').innerHTML = (o.items || []).map(i =>
+        `<li><b>${escapeHtml(i.name)}</b> — qty ${i.qty} — ${fmtPLN(i.buy_price_gross)} (szt.)</li>`
+      ).join('');
+
+      document.getElementById('mStatus').innerHTML = statusBadge(o.status);
+
+      const pdfBtn = document.getElementById('mPdfBtn');
+      pdfBtn.style.display = 'inline-block';
+      pdfBtn.onclick = async () => { await downloadPdf(o.id); await loadOrders(); };
+
+      // delete order (soft-delete)
+      const delBtn = document.getElementById('mDeleteBtn');
+      delBtn.onclick = async () => {
+        if (!confirm(`Usunąć zamówienie #${o.id}? (Nie będzie liczone do statystyk)`)) return;
+        try{
+          await apiDelJson(`/api/admin/orders/${o.id}`, { reason: 'usuniete przez admina' });
+          closeModal();
+          await loadOrders();
+        }catch(e){
+          alert(e.message || 'Błąd');
+        }
+      };
+
+      document.getElementById('problemMsg').textContent = '';
+      document.getElementById('problemReason').value = o.problem_reason || 'brak danych';
+      document.getElementById('problemNote').value = o.problem_note || '';
+      document.getElementById('modal').classList.add('open');
+    }
+
+    function closeModal(){
+      document.getElementById('modal').classList.remove('open');
+      selectedOrder = null;
+    }
+    document.getElementById('mClose').onclick = closeModal;
+    document.getElementById('modal').addEventListener('click', (e) => { if (e.target.id === 'modal') closeModal(); });
+
+    document.getElementById('copyOrderId').onclick = async () => {
+      if (!selectedOrder) return;
+      await navigator.clipboard.writeText(String(selectedOrder.id));
+      document.getElementById('mToast').textContent = 'Skopiowano numer ✅';
+      setTimeout(()=> document.getElementById('mToast').textContent='', 1200);
+    };
+    document.getElementById('copySeller').onclick = async () => {
+      if (!selectedOrder) return;
+      await navigator.clipboard.writeText(String(selectedOrder.seller_email||''));
+      document.getElementById('mToast').textContent = 'Skopiowano sprzedawcę ✅';
+      setTimeout(()=> document.getElementById('mToast').textContent='', 1200);
+    };
+
+    document.getElementById('setProblemBtn').onclick = async () => {
+      if (!selectedOrder) return;
+      const reason = document.getElementById('problemReason').value;
+      const note = document.getElementById('problemNote').value;
+      try {
+        await apiPatch(`/api/orders/${selectedOrder.id}/problem`, { reason, note });
+        document.getElementById('problemMsg').textContent = 'Ustawiono PROBLEM ✅';
+        await loadOrders();
+        selectedOrder = orders.find(x => x.id === selectedOrder.id);
+        openOrderModal(selectedOrder);
+      } catch (e) {
+        document.getElementById('problemMsg').textContent = String(e.message || e);
+      }
+    };
+
+    document.getElementById('clearProblemBtn').onclick = async () => {
+      if (!selectedOrder) return;
+      try {
+        await apiPatch(`/api/orders/${selectedOrder.id}/clear-problem`, {});
+        document.getElementById('problemMsg').textContent = 'Usunięto PROBLEM ✅';
+        await loadOrders();
+        selectedOrder = orders.find(x => x.id === selectedOrder.id);
+        openOrderModal(selectedOrder);
+      } catch (e) {
+        document.getElementById('problemMsg').textContent = String(e.message || e);
+      }
+    };
+
+    // PRODUCTS
+    function renderProducts(){
+      document.getElementById('prodCount').textContent = String(products.length);
+      const body = document.getElementById('productsBody');
+
+      if (!products.length){
+        body.innerHTML = `<tr><td colspan="5" class="muted">Brak produktów.</td></tr>`;
+        return;
+      }
+
+      body.innerHTML = products.map(p => {
+        const st = p.is_active === 1 ? `<span class="st done">AKTYWNY</span>` : `<span class="st problem">WYŁĄCZONY</span>`;
+        const delBtn = p.is_active === 1
+          ? `<button class="btn small danger" data-del="${p.id}">Usuń</button>`
+          : `<span class="muted">—</span>`;
+        return `
+          <tr>
+            <td>${p.id}</td>
+            <td><b>${escapeHtml(p.name)}</b></td>
+            <td class="right">${fmtPLN(p.buy_price_gross)}</td>
+            <td class="nowrap">${st}</td>
+            <td class="nowrap">${delBtn}</td>
+          </tr>
+        `;
+      }).join('');
+
+      body.querySelectorAll('button[data-del]').forEach(btn => {
+        btn.onclick = async () => {
+          const id = Number(btn.dataset.del);
+          if (!confirm('Wyłączyć ten produkt? Zniknie u sprzedawców. Historia zamówień zostaje.')) return;
+          try{
+            await apiDel(`/api/products/${id}`);
+            await loadProducts();
+          }catch(e){
+            alert(e.message || 'Błąd');
+          }
+        };
+      });
+    }
+
+    document.getElementById('addProductBtn').onclick = async () => {
+      const name = document.getElementById('pname').value.trim();
+      const price = Number(document.getElementById('pprice').value);
+      document.getElementById('pmsg').textContent = '';
+      if (!name || !Number.isFinite(price)) {
+        document.getElementById('pmsg').textContent = 'Podaj nazwę i poprawną cenę.';
+        return;
+      }
+      try {
+        await apiPost('/api/products', { name, buy_price_gross: price });
+        document.getElementById('pname').value = '';
+        document.getElementById('pprice').value = '';
+        document.getElementById('pmsg').textContent = 'Dodano produkt ✅';
+        await loadProducts();
+      } catch (e) {
+        document.getElementById('pmsg').textContent = String(e.message || e);
+      }
+    };
+
+    // CREATE SELLER
+    document.getElementById('createSellerBtn').onclick = async () => {
+      const em = document.getElementById('sEmail').value.trim();
+      const pw = document.getElementById('sPass').value.trim();
+      const dn = document.getElementById('sName').value.trim();
+      document.getElementById('smsg').textContent = '';
+      if (!em || !pw) {
+        document.getElementById('smsg').textContent = 'Email i hasło są wymagane.';
+        return;
+      }
+      try {
+        await apiPost('/api/admin/sellers', { email: em, password: pw, display_name: dn });
+        document.getElementById('sEmail').value = '';
+        document.getElementById('sPass').value = '';
+        document.getElementById('sName').value = '';
+        document.getElementById('smsg').textContent = 'Utworzono konto ✅';
+      } catch (e) {
+        document.getElementById('smsg').textContent = String(e.message || e);
+      }
+    };
+
+    // SELLERS list
+    function renderSellers(){
+      document.getElementById('sellerCount').textContent = String(sellers.length);
+      const q = (document.getElementById('qSellers').value || '').trim().toLowerCase();
+      const list = sellers.filter(s => {
+        const hay = `${s.email} ${s.display_name||''} ${s.id}`.toLowerCase();
+        return !q || hay.includes(q);
+      });
+
+      const body = document.getElementById('sellersBody');
+      document.getElementById('sellersMsg').textContent = `Załadowano ${sellers.length} sprzedawców.`;
+
+      if (!list.length) {
+        body.innerHTML = `<tr><td colspan="4" class="muted">Brak wyników.</td></tr>`;
+        return;
+      }
+
+      body.innerHTML = list.map(s => {
+        const ban = s.is_banned === 1 ? `<span class="st problem">ZABLOKOWANY</span>` : `<span class="st done">AKTYWNY</span>`;
+        const warn = s.warning_active === 1 ? `⚠️` : `—`;
+        return `
+          <tr class="click" data-sid="${s.id}">
+            <td>${s.id}</td>
+            <td><b>${escapeHtml(s.email)}</b><div class="muted">${escapeHtml(s.display_name||'')}</div></td>
+            <td class="nowrap">${ban}</td>
+            <td class="nowrap">${warn}</td>
+          </tr>
+        `;
+      }).join('');
+
+      body.querySelectorAll('tr[data-sid]').forEach(tr => {
+        tr.onclick = async () => {
+          const id = Number(tr.dataset.sid);
+          await loadSellerProfile(id);
+        };
+      });
+    }
+
+    async function loadSellerProfile(id){
+      selectedSeller = id;
+
+      document.getElementById('sellerProfileEmpty').style.display = 'none';
+      document.getElementById('sellerProfile').style.display = 'block';
+
+      document.getElementById('rangeMsg').textContent = '';
+      document.getElementById('warnMsg').textContent = '';
+      document.getElementById('rangeOrdersBody').innerHTML = `<tr><td colspan="5" class="muted">Ustaw zakres dat.</td></tr>`;
+      document.getElementById('rangeCount').textContent = '0';
+      document.getElementById('rangeTotal').textContent = fmtPLN(0);
+
+      const data = await apiGet(`/api/admin/sellers/${id}`);
+      const s = data.seller;
+
+      document.getElementById('spTitle').textContent = s.display_name ? `${s.display_name} (${s.email})` : s.email;
+      document.getElementById('spSub').textContent = `ID: ${s.id}`;
+
+      document.getElementById('spAllOrders').textContent = String(data.all.total_orders);
+      document.getElementById('spTodayOrders').textContent = String(data.all.today_orders);
+      document.getElementById('spAllTurnover').textContent = fmtPLN(data.all.total_turnover);
+      document.getElementById('spTodayTurnover').textContent = fmtPLN(data.all.today_turnover);
+
+      document.getElementById('spBanState').textContent = s.is_banned === 1 ? 'ZABLOKOWANY' : 'AKTYWNY';
+      document.getElementById('spWarnState').textContent = s.warning_active === 1 ? 'AKTYWNE' : 'BRAK';
+      document.getElementById('warnText').value = s.warning_text || '';
+
+      document.getElementById('banBtn').onclick = async () => {
+        await apiPatch(`/api/admin/sellers/${id}`, { is_banned: 1 });
+        await loadSellers();
+        await loadSellerProfile(id);
+      };
+      document.getElementById('unbanBtn').onclick = async () => {
+        await apiPatch(`/api/admin/sellers/${id}`, { is_banned: 0 });
+        await loadSellers();
+        await loadSellerProfile(id);
+      };
+
+      document.getElementById('setWarnBtn').onclick = async () => {
+        const text = document.getElementById('warnText').value;
+        await apiPatch(`/api/admin/sellers/${id}`, { warning_text: text, warning_active: 1 });
+        document.getElementById('warnMsg').textContent = 'Ustawiono ostrzeżenie ✅';
+        await loadSellers();
+        await loadSellerProfile(id);
+      };
+      document.getElementById('clearWarnBtn').onclick = async () => {
+        await apiPatch(`/api/admin/sellers/${id}`, { warning_text: '', warning_active: 0 });
+        document.getElementById('warnMsg').textContent = 'Usunięto ostrzeżenie ✅';
+        await loadSellers();
+        await loadSellerProfile(id);
+      };
+
+      document.getElementById('rangeApplyBtn').onclick = async () => {
+        const from = document.getElementById('rangeFrom').value;
+        const to = document.getElementById('rangeTo').value;
+        if (!from || !to) { document.getElementById('rangeMsg').textContent = 'Wybierz daty od i do.'; return; }
+
+        const r = await apiGet(`/api/admin/sellers/${id}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+        document.getElementById('rangeMsg').textContent = `Zakres: ${from} → ${to} • zamówień: ${r.range.total_orders} • suma: ${fmtPLN(r.range.total_turnover)}`;
+        document.getElementById('rangeCount').textContent = String(r.range.total_orders);
+        document.getElementById('rangeTotal').textContent = fmtPLN(r.range.total_turnover);
+
+        const body = document.getElementById('rangeOrdersBody');
+        if (!r.range.orders.length) {
+          body.innerHTML = `<tr><td colspan="5" class="muted">Brak zamówień w zakresie.</td></tr>`;
+          return;
+        }
+
+        body.innerHTML = r.range.orders.map(o => {
+          const prodNames = (o.items || []).map(it => `${escapeHtml(it.name)} ×${it.qty}`).join(', ');
+          return `
+            <tr>
+              <td>#${o.id}</td>
+              <td class="nowrap">${escapeHtml(o.created_at)}</td>
+              <td class="nowrap">${statusBadge(o.status)}</td>
+              <td>${prodNames || '<span class="muted">—</span>'}</td>
+              <td class="right nowrap"><b>${fmtPLN(o.total_buy_gross)}</b></td>
+            </tr>
+          `;
+        }).join('');
+      };
+
+      document.getElementById('exportPdfBtn').onclick = () => {
+        const from = document.getElementById('rangeFrom').value;
+        const to = document.getElementById('rangeTo').value;
+        if (!from || !to) { alert('Ustaw zakres dat (od i do).'); return; }
+
+        fetch(`/api/admin/sellers/${id}/export.pdf?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, {
+          headers: { 'x-auth-token': token }
+        }).then(async (r) => {
+          if (!r.ok) {
+            const j = await r.json().catch(()=>({}));
+            alert(j.error || 'Nie udało się pobrać faktury PDF');
+            return;
+          }
+          const blob = await r.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `faktura_zbiorcza_seller_${id}_${from}_${to}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        });
+      };
+    }
+
+    // SALES SUMMARY
+    async function loadSalesSummary(){
+      const from = document.getElementById('ssFrom').value;
+      const to = document.getElementById('ssTo').value;
+      const msg = document.getElementById('ssMsg');
+      const body = document.getElementById('ssBody');
+
+      msg.textContent = '';
+      document.getElementById('ssCount').textContent = '0';
+      document.getElementById('ssQty').textContent = '0';
+      document.getElementById('ssVal').textContent = fmtPLN(0);
+
+      if (!from || !to) {
+        body.innerHTML = `<tr><td colspan="3" class="muted">Ustaw zakres dat.</td></tr>`;
+        return;
+      }
+
+      body.innerHTML = `<tr><td colspan="3" class="muted">Ładowanie...</td></tr>`;
+
+      try {
+        const data = await apiGet(`/api/admin/sales-summary?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+        const items = data.items || [];
+        document.getElementById('ssCount').textContent = String(items.length);
+
+        if (!items.length) {
+          body.innerHTML = `<tr><td colspan="3" class="muted">Brak danych w tym zakresie.</td></tr>`;
+          return;
+        }
+
+        const totalQty = items.reduce((s,i)=> s + Number(i.qty||0), 0);
+        const totalVal = items.reduce((s,i)=> s + Number(i.value||0), 0);
+        document.getElementById('ssQty').textContent = String(totalQty);
+        document.getElementById('ssVal').textContent = fmtPLN(totalVal);
+        msg.textContent = `Zakres: ${from} → ${to}`;
+
+        body.innerHTML = items.map(i => `
+          <tr>
+            <td><b>${escapeHtml(i.name)}</b></td>
+            <td class="right nowrap">${Number(i.qty||0)}</td>
+            <td class="right nowrap">${fmtPLN(i.value||0)}</td>
+          </tr>
+        `).join('');
+      } catch (e) {
+        body.innerHTML = `<tr><td colspan="3" class="muted">Błąd: ${escapeHtml(e.message || e)}</td></tr>`;
+      }
+    }
+    document.getElementById('ssApplyBtn').onclick = loadSalesSummary;
+
+    // RANKING (Top 5)
+    function renderTop(){
+      const prodMap = new Map(); // name -> value
+      const sellerMap = new Map(); // seller_email -> value
+      for (const o of orders) {
+        const val = Number(o.total_buy_gross || 0);
+        sellerMap.set(o.seller_email, (sellerMap.get(o.seller_email) || 0) + val);
+        for (const it of (o.items || [])) {
+          const v = Number(it.qty) * Number(it.buy_price_gross);
+          prodMap.set(it.name, (prodMap.get(it.name) || 0) + v);
+        }
+      }
+      const topP = [...prodMap.entries()].sort((a,b) => b[1]-a[1]).slice(0,5);
+      const topS = [...sellerMap.entries()].sort((a,b) => b[1]-a[1]).slice(0,5);
+      document.getElementById('topProducts').innerHTML = topP.length
+        ? `<ol>${topP.map(([n,v]) => `<li><b>${escapeHtml(n)}</b> — ${fmtPLN(v)}</li>`).join('')}</ol>`
+        : `<div class="muted">Brak danych.</div>`;
+      document.getElementById('topSellers').innerHTML = topS.length
+        ? `<ol>${topS.map(([n,v]) => `<li><b>${escapeHtml(n)}</b> — ${fmtPLN(v)}</li>`).join('')}</ol>`
+        : `<div class="muted">Brak danych.</div>`;
+    }
+
+    // LOADERS
+    async function loadOrders(){
+      orders = await apiGet('/api/orders');
+      document.getElementById('ordersMsg').textContent = `Załadowano ${orders.length} zamówień.`;
+      renderOrders();
+      renderTop();
+    }
+    async function loadProducts(){
+      products = await apiGet('/api/products');
+      renderProducts();
+    }
+    async function loadSellers(){
+      sellers = await apiGet('/api/admin/sellers');
+      renderSellers();
+    }
+
+    // tabs
+    document.getElementById('tabs').querySelectorAll('.tab').forEach(btn => {
+      btn.onclick = async () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(`panel-${btn.dataset.tab}`).classList.add('active');
+
+        try{
+          if (btn.dataset.tab === 'products') await loadProducts();
+          if (btn.dataset.tab === 'sellers') await loadSellers();
+          if (btn.dataset.tab === 'salesSummary') await loadSalesSummary();
+          if (btn.dataset.tab === 'stats') await loadOrders();
+        }catch(e){
+          alert(e.message || 'Błąd');
+        }
+      };
+    });
+
+    // order filters
+    ['input','change'].forEach(ev => {
+      document.getElementById('qOrders').addEventListener(ev, renderOrders);
+      document.getElementById('statusFilter').addEventListener(ev, renderOrders);
+      document.getElementById('dateFilter').addEventListener(ev, renderOrders);
+      document.getElementById('sortOrders').addEventListener(ev, renderOrders);
+      document.getElementById('qSellers').addEventListener(ev, renderSellers);
+    });
+
+    // buttons
+    document.getElementById('logoutBtn').onclick = logout;
+    document.getElementById('refreshBtn').onclick = async () => {
+      const active = document.querySelector('.tab.active')?.dataset?.tab || 'orders';
+      await loadOrders(); // zawsze
+      if (active === 'products') await loadProducts();
+      if (active === 'sellers') await loadSellers();
+      if (active === 'salesSummary') await loadSalesSummary();
+    };
+    document.getElementById('reloadSellersBtn').onclick = loadSellers;
+
+    // init
+    (async () => {
+      await loadOrders();
+    })();
+
+    // auto refresh orders
+    setInterval(() => loadOrders().catch(()=>{}), 7000);
+  </script>
+</body>
+</html>

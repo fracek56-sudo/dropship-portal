@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Logowanie</title>
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body class="wrap">
+
+  <div class="card">
+    <h1>Logowanie</h1>
+    <p class="muted">Wpisz dane logowania otrzymane od administratora.</p>
+
+    <label>Email</label>
+    <input id="email" placeholder="email" autocomplete="username" />
+
+    <label>Hasło</label>
+    <input id="password" type="password" placeholder="hasło" autocomplete="current-password" />
+
+    <button id="loginBtn">Zaloguj</button>
+    <p id="msg" class="muted"></p>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    document.getElementById("loginBtn").onclick = async () => {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        document.getElementById("msg").innerText = data.error || "Błąd logowania";
+        return;
+      }
+
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("role", data.role);
+      localStorage.setItem("email", data.email);
+
+      window.location.href = data.role === "admin" ? "/admin.html" : "/seller.html";
+    };
+  </script>
+
+</body>
+</html>
