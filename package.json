@@ -1,0 +1,16 @@
+{
+  "name": "dropship-portal",
+  "version": "1.0.0",
+  "description": "Prosty portal dropshippingowy (admin + sprzedawcy)",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.10.0",
+    "express": "^4.22.1",
+    "multer": "^1.4.5-lts.1",
+    "sqlite3": "^5.1.7"
+  }
+}
